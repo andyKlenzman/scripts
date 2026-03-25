@@ -1,3 +1,5 @@
+
+
 # Scripts
 
 This repo contains scripts for everyday automations.
@@ -41,3 +43,5 @@ Set it once:
 ```bash
 variablestore.sh set claude-workspace /path/to/your/workspace
 ```
+
+
