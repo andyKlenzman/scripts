@@ -1,0 +1,20 @@
+#!/bin/bash
+
+source "$(dirname "$0")/../lib/common.sh"
+require_config blog
+
+if [ ! -d "$BLOG_PATH" ]; then
+    echo "Error: Blog path does not exist: $BLOG_PATH" >&2
+    echo "Run blog/setup.sh to reconfigure." >&2
+    exit 1
+fi
+
+MESSAGE="${1:-publish items}"
+
+debug "Publishing from: $BLOG_PATH"
+debug "Commit message: $MESSAGE"
+
+cd "$BLOG_PATH" || exit 1
+git add -A
+git commit -m "$MESSAGE"
+git push

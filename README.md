@@ -1,47 +1,51 @@
-
-
 # Scripts
 
-This repo contains scripts for everyday automations.
+A growing, portable collection of personal macOS automations. Each tool lives in its own subdirectory. One `setup.sh` gets everything running on a new machine.
 
-Run this command to make all scripts executable.
+---
 
-```bash
-chmod +x ~/scripts/*.sh
-```
-
-Add the scripts directory to path to make them callable from the terminal.
+## Setup on a New System
 
 ```bash
-nano ~/.zshrc
+git clone <repo-url> ~/scripts
+chmod +x ~/scripts/setup.sh
+~/scripts/setup.sh
+source ~/.zshrc
 ```
 
-Add the following command and the path will be added to your path at the start of every terminal session
+That's it. `setup.sh` writes a dynamic PATH loop to `~/.zshrc` and runs each tool's setup interactively.
 
-```bash
-export PATH="$HOME/scripts:$PATH"
+---
+
+## Tools
+
+| Tool | Description | Commands |
+|------|-------------|----------|
+| `blog/` | Hugo blog authoring and publishing | `blog-new <slug>`, `blog-publish [message]` |
+| `jlink/` | JLink firmware flashing | `flash-firmware` |
+
+---
+
+## Adding a New Tool
+
+1. Create a `<toolname>/` directory in the repo root
+2. Write `<toolname>/setup.sh` — reads/writes `~/.config/scripts/<toolname>.conf`
+3. Place tool scripts in `<toolname>/`
+4. Register `<toolname>/setup.sh` in the master `setup.sh`
+5. Add a row to the Tools table above
+
+The PATH loop in `~/.zshrc` picks up the new subdirectory automatically — no further shell config needed.
+
+---
+
+## Config
+
+Tool configuration lives in `~/.config/scripts/` as simple `KEY=VALUE` files:
+
+```
+~/.config/scripts/
+    blog.conf
+    jlink.conf
 ```
 
-## variablestore.sh
-
-Saves and reads persistent variables in `~/.scriptvariables`. Used by other scripts to share configuration.
-
-```bash
-variablestore.sh set KEY VALUE
-variablestore.sh get KEY
-variablestore.sh list
-variablestore.sh delete KEY
-```
-
-### Required variables
-
-| Variable | Beschreibung |
-|---|---|
-| `claude-workspace` | Base directory where `mk-claude-project.sh` creates new projects |
-
-Set it once:
-```bash
-variablestore.sh set claude-workspace /path/to/your/workspace
-```
-
-
+Run `setup.sh` again at any time to reconfigure.

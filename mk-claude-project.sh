@@ -1,16 +1,29 @@
 #!/bin/bash
 
-workspace=$(sh variablestore.sh get claude-workspace)
+source "$(dirname "$0")/lib/common.sh"
 
-if [ -z "$workspace" ]; then
-    echo "Error: 'claude-workspace' not set. Run: variablestore.sh set claude-workspace /your/path"
+CONFIG_FILE="$HOME/.config/scripts/mk-claude-project.conf"
+
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+if [ -z "${CLAUDE_WORKSPACE:-}" ]; then
+    read -rp "Claude workspace path (where new projects are created): " CLAUDE_WORKSPACE
+    mkdir -p "$HOME/.config/scripts"
+    echo "CLAUDE_WORKSPACE=$CLAUDE_WORKSPACE" > "$CONFIG_FILE"
+    echo "Saved to $CONFIG_FILE"
+fi
+
+if [ ! -d "$CLAUDE_WORKSPACE" ]; then
+    echo "Error: Workspace directory does not exist: $CLAUDE_WORKSPACE" >&2
     exit 1
 fi
 
-read -p "Project name: " input
+read -rp "Project name: " input
 
 name=$(echo "$input" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
-dir="${workspace}/$(date +%Y-%m-%d)-${name}"
+dir="${CLAUDE_WORKSPACE}/$(date +%Y-%m-%d)-${name}"
 
 mkdir "$dir"
 touch "$dir/SKILLS.md"

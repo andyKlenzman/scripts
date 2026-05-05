@@ -1,0 +1,41 @@
+#!/bin/bash
+
+source "$(dirname "$0")/../lib/common.sh"
+require_config blog
+
+if [ $# -ne 1 ]; then
+    echo "Usage: blog-new <slug>" >&2
+    echo "  slug: lowercase letters, numbers, and hyphens only" >&2
+    exit 1
+fi
+
+SLUG="$1"
+
+if ! echo "$SLUG" | grep -qE '^[a-z0-9-]+$'; then
+    echo "Error: slug must contain only lowercase letters, numbers, and hyphens." >&2
+    exit 1
+fi
+
+if [ ! -d "$BLOG_PATH" ]; then
+    echo "Error: Blog path does not exist: $BLOG_PATH" >&2
+    echo "Run blog/setup.sh to reconfigure." >&2
+    exit 1
+fi
+
+BUNDLE_DIR="$BLOG_PATH/content/items/$(date +%Y-%m-%d)-${SLUG}"
+INDEX="$BUNDLE_DIR/index.md"
+
+mkdir -p "$BUNDLE_DIR"
+
+cat > "$INDEX" <<EOF
+---
+date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tags: []
+title: ""
+description: ""
+draft: false
+---
+EOF
+
+debug "Created bundle: $BUNDLE_DIR"
+echo "$INDEX"
