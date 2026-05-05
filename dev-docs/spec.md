@@ -163,12 +163,53 @@ Ablauf:
 2. `cd $BLOG_PATH`
 3. `git add -A && git commit -m "${1:-publish items}" && git push`
 
-### Auto-Publish Cron
+#### `blog/auto-publish.sh` (wird vom Cron Job aufgerufen)
 
-`blog/setup.sh` richtet optional einen nächtlichen Cron Job ein:
+Eigenständiges Script — kein direkter Nutzeraufruf. Wird von cron als vollständiger Prozess gestartet.
 
+**Wichtig:** Cron läuft in einer minimalen Umgebung ohne PATH, ohne `.zshrc`, ohne Shell-Aliases. Deshalb braucht `auto-publish.sh` absolute Pfade für alles.
+
+Ablauf:
+1. Sourced Config mit absolutem Pfad: `/bin/bash -c "source $HOME/.config/scripts/blog.conf"`
+2. Prüft ob Änderungen vorhanden sind: `git diff --quiet && git diff --cached --quiet`
+3. Wenn keine Änderungen → Script endet lautlos (kein Log, keine Notification)
+4. Wenn Änderungen vorhanden:
+   - `git add -A && git commit -m "auto-publish" && git push`
+   - Bei **Erfolg**: macOS-Notification + System Log Eintrag
+   - Bei **Fehler**: macOS-Notification mit Fehlermeldung + System Log Eintrag
+
+**Logging** via `logger`:
 ```bash
-0 23 * * * source ~/.config/scripts/blog.conf && cd "$BLOG_PATH" && git diff --quiet && git diff --cached --quiet || (git add -A && git commit -m "auto-publish" && git push)
+logger -t "scripts.blog" "auto-publish: pushed successfully"
+logger -t "scripts.blog" "auto-publish: push failed — exit code $?"
+```
+Filterbar in Console.app mit Suchbegriff `scripts.blog`.
+
+**Notifications** via `osascript`:
+```bash
+osascript -e 'display notification "Blog published" with title "Script Library"'
+osascript -e 'display notification "Blog push failed — check Console.app" with title "Script Library" subtitle "Error"'
+```
+
+### Cron Job Setup
+
+`blog/setup.sh` fragt interaktiv nach der gewünschten Uhrzeit und schreibt den Cron Job.
+
+**Config** (`~/.config/scripts/blog.conf`):
+```bash
+BLOG_PATH=/Users/andyklenzman/Development/andy.blog
+BLOG_CRON_HOUR=23
+BLOG_CRON_MINUTE=0
+```
+
+**Cron-Eintrag** (geschrieben von `blog/setup.sh`):
+```bash
+0 23 * * * /absolute/pfad/zu/blog/auto-publish.sh
+```
+
+Setup ist idempotent: bestehender Eintrag wird ersetzt, nicht dupliziert. Implementierung via:
+```bash
+(crontab -l 2>/dev/null | grep -v "auto-publish.sh"; echo "$CRON_ENTRY") | crontab -
 ```
 
 ---
@@ -221,7 +262,47 @@ Muss dokumentieren:
 
 ---
 
-## 11. Mobile Workflow (iOS)
+## 11. Wie Cron Jobs funktionieren (Grundlagen)
+
+Ein Cron Job ist ein geplanter Task. `cron` ist ein Daemon — ein Prozess der immer im Hintergrund läuft und jede Minute die `crontab` (cron table) prüft. Wenn die Zeit eines Eintrags passt, führt er das Command aus.
+
+### Das Format
+
+```
+MINUTE  STUNDE  TAG  MONAT  WOCHENTAG  COMMAND
+  0       23     *     *        *       /pfad/zum/script.sh
+```
+
+`*` bedeutet "jeden/jede". `0 23 * * *` = jeden Tag um 23:00 Uhr.
+
+### Wichtige Eigenschaft: kein Benutzerkontext
+
+Cron startet Scripts in einer **minimalen Umgebung**:
+- Kein `PATH` (außer `/usr/bin:/bin`)
+- Kein `.zshrc`, keine Aliases, keine Shell-Funktionen
+- Kein Zugriff auf GUI-Session (Notifications brauchen `osascript` mit User-Kontext)
+
+Deshalb: in Cron-Scripts immer **absolute Pfade** verwenden (`/usr/bin/git`, nicht `git`).
+
+### Crontab verwalten
+
+```bash
+crontab -l          # aktuelle Einträge anzeigen
+crontab -e          # Editor öffnen (nicht empfohlen — lieber Script)
+crontab -r          # alle Einträge löschen (Vorsicht!)
+```
+
+### Debugging
+
+Wenn ein Cron Job nicht tut was er soll:
+1. `crontab -l` — ist der Eintrag überhaupt da?
+2. Console.app → Filter nach `scripts.blog` — was hat `logger` geschrieben?
+3. Script manuell mit absolutem Pfad aufrufen: `/pfad/zu/blog/auto-publish.sh`
+4. `DEBUG=1 /pfad/zu/blog/auto-publish.sh` — debug output einschalten
+
+---
+
+## 12. Mobile Workflow (iOS)
 
 Separat von diesem Repo. Wird mit Working Copy + iOS Shortcuts abgedeckt. Kein Script-Anteil in diesem Repo.
 

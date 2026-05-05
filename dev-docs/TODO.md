@@ -14,6 +14,8 @@
 - [ ] Create `blog/publish.sh` — git add/commit/push blog repo
 - [ ] Wire `blog/setup.sh` into master `setup.sh`
 - [ ] Remove `variablestore.sh` and fix `mk-claude-project.sh` dependency
+- [ ] Create `blog/auto-publish.sh` — cron-safe script with logger + osascript notifications
+- [ ] Update `blog/setup.sh` to ask for cron time and register cron entry (idempotent)
 
 ## Wishlist / Backlog
 

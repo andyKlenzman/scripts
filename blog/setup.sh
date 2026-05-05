@@ -4,6 +4,7 @@ source "$(dirname "$0")/../lib/common.sh"
 
 CONFIG_DIR="$HOME/.config/scripts"
 CONFIG_FILE="$CONFIG_DIR/blog.conf"
+AUTO_PUBLISH_SCRIPT="$SCRIPTS_DIR/blog/auto-publish.sh"
 
 mkdir -p "$CONFIG_DIR"
 
@@ -11,6 +12,8 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
     echo "Current blog config:"
     echo "  BLOG_PATH=$BLOG_PATH"
+    echo "  BLOG_CRON_HOUR=${BLOG_CRON_HOUR:-not set}"
+    echo "  BLOG_CRON_MINUTE=${BLOG_CRON_MINUTE:-not set}"
     echo ""
 fi
 
@@ -22,5 +25,26 @@ if [ ! -d "$BLOG_PATH" ]; then
     echo "(Config saved anyway — make sure the path is correct before using blog commands)"
 fi
 
-echo "BLOG_PATH=$BLOG_PATH" > "$CONFIG_FILE"
+echo ""
+read -rp "Auto-publish hour (0-23) [${BLOG_CRON_HOUR:-23}]: " input_hour
+[ -n "$input_hour" ] && BLOG_CRON_HOUR="$input_hour"
+BLOG_CRON_HOUR="${BLOG_CRON_HOUR:-23}"
+
+read -rp "Auto-publish minute (0-59) [${BLOG_CRON_MINUTE:-0}]: " input_minute
+[ -n "$input_minute" ] && BLOG_CRON_MINUTE="$input_minute"
+BLOG_CRON_MINUTE="${BLOG_CRON_MINUTE:-0}"
+
+cat > "$CONFIG_FILE" <<EOF
+BLOG_PATH=$BLOG_PATH
+BLOG_CRON_HOUR=$BLOG_CRON_HOUR
+BLOG_CRON_MINUTE=$BLOG_CRON_MINUTE
+EOF
+
 echo "Blog config saved to $CONFIG_FILE"
+
+# Register cron job — remove any existing entry first, then add new one
+CRON_ENTRY="$BLOG_CRON_MINUTE $BLOG_CRON_HOUR * * * $AUTO_PUBLISH_SCRIPT"
+( crontab -l 2>/dev/null | grep -v "auto-publish.sh"; echo "$CRON_ENTRY" ) | crontab -
+
+echo "Cron job registered: auto-publish daily at ${BLOG_CRON_HOUR}:$(printf '%02d' "$BLOG_CRON_MINUTE")"
+echo "Logs visible in Console.app — filter by: scripts.blog"
