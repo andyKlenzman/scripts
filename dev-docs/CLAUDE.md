@@ -2,64 +2,86 @@
 
 Guidance for Claude Code when working in this repository.
 
-## What This Repo Is
-
-A growing collection of personal macOS shell automations. Each tool is self-contained in its own subdirectory. The repo is designed to be cloned on any machine and set up with a single command.
-
 ## Structure
 
 ```
 /
-├── setup.sh               ← Master setup — run this on a new machine
+├── setup                       ← Master bootstrap — run once on a new machine
+├── scripts                     ← Lists all available tools and commands
+├── lib/
+│   └── common                  ← Shared utilities sourced by all tool scripts
 ├── <toolname>/
-│   ├── setup.sh           ← Tool-specific config setup
-│   └── *.sh               ← Tool scripts (auto-added to PATH)
-├── dev-docs/
-│   ├── SPEC.md
-│   ├── TODO.md
-│   └── CLAUDE.md          ← this file
+│   ├── <toolname>-setup        ← Interactive config writer for this tool
+│   └── <toolname>-<action>     ← Tool scripts (auto-added to PATH)
+├── misc/                       ← Unsorted / one-off scripts
+├── dev-docs/                   ← Specs, TODO, CLAUDE.md
 └── README.md
 ```
 
-## PATH Convention
+The root contains only infrastructure and tool directories. One-off or unsorted scripts go in `misc/`.
 
-`setup.sh` writes a dynamic loop to `~/.zshrc` that adds every subdirectory to PATH:
+## How the Setup Mechanism Works
+
+### PATH registration
+
+`setup` appends a block to `~/.zshrc` once, guarded by a sentinel comment to ensure idempotency:
 
 ```bash
+# scripts repo — auto-load all tool subdirectories
+SCRIPTS_DIR="/absolute/path/to/repo"
+export PATH="$SCRIPTS_DIR:$PATH"
 for dir in "$SCRIPTS_DIR"/*/; do
-  export PATH="$dir:$PATH"
+    [ -d "$dir" ] && export PATH="$dir:$PATH"
 done
+typeset -U PATH
 ```
 
-New tool subdirectories are picked up automatically — never manually edit PATH for new tools.
+Key points for a developer changing this:
+- `$SCRIPTS_DIR` is the repo's absolute path, baked in at setup time by `setup` itself
+- The glob `*/` means every immediate subdirectory is added — adding a new tool directory requires no changes to this block
+- `typeset -U PATH` is zsh-specific; it deduplicates PATH entries automatically on each shell start
+- To change the sentinel string, update both `PATH_MARKER` in `setup` and remove the old block from `~/.zshrc` before re-running
 
-## Config Convention (XDG)
+### Shared runtime (`lib/common`)
 
-All tool config lives under `~/.config/scripts/` as `KEY=VALUE` files:
+All tool scripts source `lib/common` using a path relative to their own location:
 
-- `~/.config/scripts/blog.conf`
-- `~/.config/scripts/jlink.conf`
+```bash
+source "$(dirname "$0")/../lib/common"
+```
 
-Each tool's `setup.sh` is responsible for writing its own `.conf` file interactively. Scripts source their config at runtime: `source ~/.config/scripts/<tool>.conf`.
+`lib/common` derives `$SCRIPTS_DIR` from its own file path:
 
-Never hardcode paths in scripts. Always read from config.
+```bash
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+```
+
+This means `$SCRIPTS_DIR` is always correct regardless of how or from where a tool script is invoked.
+
+### XDG Config
+
+Config lives in `~/.config/scripts/<toolname>.conf` as plain `KEY=VALUE`. Each tool's `-setup` script writes this file interactively and is idempotent. Tool scripts load config at runtime via `require_config`:
+
+```bash
+require_config blog   # sources ~/.config/scripts/blog.conf, exits if missing
+```
+
+### Cron scripts
+
+Cron runs scripts in a minimal environment — no PATH, no `.zshrc`. Any script called by cron must:
+- Use absolute binary paths: `/usr/bin/git` not `git`
+- Source config by absolute path, not via `require_config`
+- Log via `logger -t "scripts.<toolname>"` (visible in Console.app)
+
+## Naming Convention
+
+All user-facing scripts: `<toolname>-<action>`, no file extension. Internal/shared files (`setup`, `lib/common`) have no extension either. No `.sh` anywhere.
 
 ## Adding a New Tool — Checklist
 
 - [ ] Create `<toolname>/` directory
-- [ ] Write `<toolname>/setup.sh` that writes `~/.config/scripts/<toolname>.conf`
-- [ ] Write tool scripts in `<toolname>/`, sourcing config at the top
-- [ ] Register `<toolname>/setup.sh` in master `setup.sh`
+- [ ] Write `<toolname>/<toolname>-setup` — writes `~/.config/scripts/<toolname>.conf`
+- [ ] Write tool scripts as `<toolname>-<action>`, sourcing `../lib/common`
+- [ ] Register `<toolname>/<toolname>-setup` in root `setup`
 - [ ] Add tool to README.md Tools table
-- [ ] Make all scripts executable: `chmod +x <toolname>/*.sh`
-
-## What Was Removed
-
-- `variablestore.sh` — replaced by XDG config (`~/.config/scripts/`)
-
-## Conventions
-
-- All scripts are `bash` with `.sh` extension
-- Scripts that need GUI dialogs on macOS use `osascript`
-- `setup.sh` scripts must be idempotent (safe to run multiple times)
-- No hardcoded absolute paths — all paths come from XDG config
+- [ ] `chmod +x <toolname>/<toolname>-*`

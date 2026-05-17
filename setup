@@ -25,7 +25,7 @@ fi
 
 echo ""
 echo "--- Blog tool setup ---"
-bash "$SCRIPT_DIR/blog/setup.sh"
+bash "$SCRIPT_DIR/blog/blog-setup"
 
 echo ""
 echo "All tools configured."

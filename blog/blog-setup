@@ -1,10 +1,10 @@
 #!/bin/bash
 
-source "$(dirname "$0")/../lib/common.sh"
+source "$(dirname "$0")/../lib/common"
 
 CONFIG_DIR="$HOME/.config/scripts"
 CONFIG_FILE="$CONFIG_DIR/blog.conf"
-AUTO_PUBLISH_SCRIPT="$SCRIPTS_DIR/blog/auto-publish.sh"
+AUTO_PUBLISH_SCRIPT="$SCRIPTS_DIR/blog/blog-auto-publish"
 
 mkdir -p "$CONFIG_DIR"
 
@@ -44,7 +44,7 @@ echo "Blog config saved to $CONFIG_FILE"
 
 # Register cron job — remove any existing entry first, then add new one
 CRON_ENTRY="$BLOG_CRON_MINUTE $BLOG_CRON_HOUR * * * $AUTO_PUBLISH_SCRIPT"
-( crontab -l 2>/dev/null | grep -v "auto-publish.sh"; echo "$CRON_ENTRY" ) | crontab -
+( crontab -l 2>/dev/null | grep -v "blog-auto-publish"; echo "$CRON_ENTRY" ) | crontab -
 
 echo "Cron job registered: auto-publish daily at ${BLOG_CRON_HOUR}:$(printf '%02d' "$BLOG_CRON_MINUTE")"
 echo "Logs visible in Console.app — filter by: scripts.blog"

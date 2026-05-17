@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/../lib/common.sh"
+source "$(dirname "$0")/../lib/common"
 require_config blog
 
 if [ ! -d "$BLOG_PATH" ]; then

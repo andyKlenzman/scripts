@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$(dirname "$0")/lib/common.sh"
+source "$(dirname "$0")/lib/common"
 
 EXCLUDE=("lib" "dev-docs")
 
@@ -22,12 +22,13 @@ for tool_dir in "$SCRIPTS_DIR"/*/; do
 
     echo ""
     echo "  ${tool}/"
-    for script in "$tool_dir"*.sh; do
-        [ -f "$script" ] || continue
+    for script in "$tool_dir"*; do
+        [ -f "$script" ] && [ -x "$script" ] || continue
         cmd="$(basename "$script" .sh)"
         echo "    $cmd"
     done
 done
+
 
 echo ""
 
