@@ -28,6 +28,10 @@ echo "--- Blog tool setup ---"
 bash "$SCRIPT_DIR/blog/blog-setup"
 
 echo ""
+echo "--- Writing tool setup ---"
+bash "$SCRIPT_DIR/writing/writing-setup"
+
+echo ""
 echo "All tools configured."
 echo "Run: source ~/.zshrc"
 echo "Then try:"

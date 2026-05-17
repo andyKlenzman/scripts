@@ -1,0 +1,41 @@
+#!/bin/bash
+# ABOUTME: Cron script that auto-commits and pushes changes in the writing repo.
+# ABOUTME: Uses absolute paths throughout — no PATH or .zshrc available in cron.
+
+CONFIG="$HOME/.config/scripts/writing.conf"
+LOG_TAG="scripts.writing"
+
+if [ ! -f "$CONFIG" ]; then
+    /usr/bin/logger -t "$LOG_TAG" "auto-push: config not found at $CONFIG"
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+source "$CONFIG"
+
+if [ ! -d "$WRITING_DIR" ]; then
+    /usr/bin/logger -t "$LOG_TAG" "auto-push: writing dir not found: $WRITING_DIR"
+    exit 1
+fi
+
+cd "$WRITING_DIR" || exit 1
+
+# Exit silently if no changes
+if /usr/bin/git diff --quiet && /usr/bin/git diff --cached --quiet; then
+    exit 0
+fi
+
+/usr/bin/git add -A
+/usr/bin/git commit -m "auto-save"
+PUSH_OUTPUT=$(/usr/bin/git push 2>&1)
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -eq 0 ]; then
+    /usr/bin/logger -t "$LOG_TAG" "auto-push: pushed successfully"
+    /usr/bin/osascript -e 'display notification "Writing saved and pushed" with title "Script Library" subtitle "Writing Auto-Push"'
+else
+    /usr/bin/logger -t "$LOG_TAG" "auto-push: push failed — $PUSH_OUTPUT"
+    /usr/bin/osascript -e "display notification \"Push failed — check Console.app for details\" with title \"Script Library\" subtitle \"Writing Auto-Push Error\""
+fi
+
+exit $EXIT_CODE

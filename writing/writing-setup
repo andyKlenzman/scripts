@@ -1,0 +1,52 @@
+#!/bin/bash
+# ABOUTME: Interactive setup for the writing auto-push tool.
+# ABOUTME: Writes ~/.config/scripts/writing.conf and registers the daily cron job.
+
+source "$(dirname "$0")/../lib/common"
+
+CONFIG_DIR="$HOME/.config/scripts"
+CONFIG_FILE="$CONFIG_DIR/writing.conf"
+AUTO_PUSH_SCRIPT="$SCRIPTS_DIR/writing/writing-push"
+
+mkdir -p "$CONFIG_DIR"
+
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+    echo "Current writing config:"
+    echo "  WRITING_DIR=$WRITING_DIR"
+    echo "  WRITING_CRON_HOUR=${WRITING_CRON_HOUR:-not set}"
+    echo "  WRITING_CRON_MINUTE=${WRITING_CRON_MINUTE:-not set}"
+    echo ""
+fi
+
+read -rp "Writing repo path [${WRITING_DIR:-e.g. /Users/you/Writing}]: " input
+[ -n "$input" ] && WRITING_DIR="$input"
+
+if [ ! -d "$WRITING_DIR" ]; then
+    echo "Warning: Directory does not exist: $WRITING_DIR"
+    echo "(Config saved anyway — make sure the path is correct before using writing commands)"
+fi
+
+echo ""
+read -rp "Auto-push hour (0-23) [${WRITING_CRON_HOUR:-23}]: " input_hour
+[ -n "$input_hour" ] && WRITING_CRON_HOUR="$input_hour"
+WRITING_CRON_HOUR="${WRITING_CRON_HOUR:-23}"
+
+read -rp "Auto-push minute (0-59) [${WRITING_CRON_MINUTE:-0}]: " input_minute
+[ -n "$input_minute" ] && WRITING_CRON_MINUTE="$input_minute"
+WRITING_CRON_MINUTE="${WRITING_CRON_MINUTE:-0}"
+
+cat > "$CONFIG_FILE" <<EOF
+WRITING_DIR=$WRITING_DIR
+WRITING_CRON_HOUR=$WRITING_CRON_HOUR
+WRITING_CRON_MINUTE=$WRITING_CRON_MINUTE
+EOF
+
+echo "Writing config saved to $CONFIG_FILE"
+
+# Register cron job — remove any existing entry first, then add new one
+CRON_ENTRY="$WRITING_CRON_MINUTE $WRITING_CRON_HOUR * * * $AUTO_PUSH_SCRIPT"
+( crontab -l 2>/dev/null | grep -v "writing-push"; echo "$CRON_ENTRY" ) | crontab -
+
+echo "Cron job registered: auto-push daily at ${WRITING_CRON_HOUR}:$(printf '%02d' "$WRITING_CRON_MINUTE")"
+echo "Logs visible in Console.app — filter by: scripts.writing"
